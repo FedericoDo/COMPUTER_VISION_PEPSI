@@ -2,12 +2,14 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import torchvision.models as models
+from torchvision.models import VGG16_Weights
 from torchvision.transforms.functional import gaussian_blur
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
-import os, yaml, random
+import random
 from pathlib import Path
 import numpy as np
+import cv2
 
 ######################### VARIOUS LOSSES 
 def recon_loss(pred, target):
@@ -24,13 +26,10 @@ def structure_loss(s, target):
     target_ds = target_ds.mean(dim=1, keepdim=True)
     return F.l1_loss(s.mean(dim=1, keepdim=True), target_ds)
 
-def texture_loss(pred, target, vgg):
-    return vgg(pred, target)
-
 class VGGLoss(nn.Module):
     def __init__(self, device="cuda"):
         super().__init__()
-        vgg = models.vgg16(pretrained=True).features.to(device).eval()
+        vgg = models.vgg16(weights=VGG16_Weights.DEFAULT).features.to(device).eval()
         self.vgg = vgg
         self.layers = [3,8,15]  
         for p in self.vgg.parameters(): 
@@ -83,7 +82,7 @@ def random_irregular_mask(h, w, max_strokes=8, max_width=40):
             end_x = np.clip(start_x + dx, 0, w-1)
             end_y = np.clip(start_y + dy, 0, h-1)
             thickness = random.randint(6, max(6, max_width//4))
-            cv2.line(mask, (start_x,start_y), (end_x,end_y), 1, thickness) #0 è colore nero
+            cv2.line(mask, (start_x,start_y), (end_x,end_y), 1, thickness) #1 è colore nero
             start_x, start_y = end_x, end_y
     return mask
 
@@ -114,7 +113,7 @@ def batch_ssim(preds, targets):
     targets = targets.permute(0,2,3,1).cpu().numpy()
     vals=[]
     # faccio permute perché ssim, così come psnr si aspetta i canali sul terzo campo
-    # il for scorre lungo il batch e quindi quello che estrae sono p e t del tipo [C, H, W]000
+    # il for scorre lungo il batch e quindi quello che estrae sono p e t del tipo [C, H, W]
     for p,t in zip(preds,targets):
         p = np.clip(p,0,1); t = np.clip(t,0,1)
         vals.append(compare_ssim(t, p, channel_axis=2, data_range=1.0, win_size=11))
@@ -122,10 +121,6 @@ def batch_ssim(preds, targets):
 
 
 ####################### SOME GENERIC FUNCTIONS
-
-def load_config(path="config.yaml"):
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
 
 def ensure_dir(p):
     Path(p).mkdir(parents=True, exist_ok=True)

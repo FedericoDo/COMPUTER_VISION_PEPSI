@@ -4,7 +4,7 @@ from PIL import Image
 import torchvision.transforms as T
 import torch
 import numpy as np
-from .masks import get_mask
+from utils import get_mask
 
 ########################### INPAINTING SECTION
 
@@ -34,6 +34,6 @@ class InpaintDataset(Dataset):
         masked_img = img * (1 - mask)
         return {"img": img, "masked_img": masked_img, "mask": mask, "path": p}
 
-def make_dataloader(root, img_size, mask_type, batch_size, shuffle=True, num_workers=4, pin_memory_=True):
+def make_dataloader(root, img_size, mask_type, batch_size, shuffle=True, num_workers=4):
     ds = InpaintDataset(root, img_size=img_size, mask_type=mask_type)
-    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory_)
+    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
