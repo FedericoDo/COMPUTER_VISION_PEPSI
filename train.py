@@ -1,4 +1,3 @@
-# scripts/train.py
 import os, argparse
 import torch.nn.functional as F
 import torch
@@ -149,3 +148,4 @@ def train():
 
 if __name__ == "__main__":
     train()
+
